@@ -1,7 +1,9 @@
 import { Calendar, Edit, Mail, Trash2, User, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Badge, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
+import { Badge, Button, Card, Col, Container, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { toast } from 'react-toastify';
+
+import '../styles/eventRegistrationLayout.css';
 
 interface Participant {
     id: string;
@@ -24,9 +26,13 @@ const EventRegistration = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
     const [editName, setEditName] = useState('');
     const [editEmail, setEditEmail] = useState('');
+
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
+
 
     useEffect(() => {
         localStorage.setItem('participants', JSON.stringify(participants));
@@ -72,16 +78,16 @@ const EventRegistration = () => {
         toast.success(`${newParticipant.name} foi inscrito(a) com sucesso!`);
     };
 
-    const handleEdit = (participant: Participant) => {
-        setEditingId(participant.id);
+    const openEditModal = (participant: Participant) => {
+        setSelectedParticipant(participant);
         setEditName(participant.name);
         setEditEmail(participant.email);
+        setShowEditModal(true);
     };
 
-    const handleCancelEdit = () => {
-        setEditingId(null);
-        setEditName('');
-        setEditEmail('');
+    const openDeleteModal = (participant: Participant) => {
+        setSelectedParticipant(participant);
+        setShowDeleteModal(true);
     };
 
     const handleSaveEdit = () => {
@@ -97,7 +103,8 @@ const EventRegistration = () => {
 
         const emailExists = participants.some(
             (p) =>
-                p.email.toLowerCase() === editEmail.toLowerCase() && p.id !== editingId
+                p.email.toLowerCase() === editEmail.toLowerCase() &&
+                p.id !== selectedParticipant?.id
         );
 
         if (emailExists) {
@@ -107,26 +114,24 @@ const EventRegistration = () => {
 
         setParticipants((prev) =>
             prev.map((p) =>
-                p.id === editingId
-                    ? {
-                        ...p,
-                        name: editName.trim(),
-                        email: editEmail.trim().toLowerCase(),
-                    }
+                p.id === selectedParticipant?.id
+                    ? { ...p, name: editName.trim(), email: editEmail.trim() }
                     : p
             )
         );
 
         toast.success('Participante atualizado com sucesso.');
-        handleCancelEdit();
+        setShowEditModal(false);
+        setSelectedParticipant(null);
     };
 
-    const handleDelete = (id: string) => {
-        const participant = participants.find((p) => p.id === id);
-        setParticipants((prev) => prev.filter((p) => p.id !== id));
-        if (participant) {
-            toast.success(`${participant.name} foi removido da lista.`);
-        }
+    const handleConfirmDelete = () => {
+        if (!selectedParticipant) return;
+
+        setParticipants((prev) => prev.filter((p) => p.id !== selectedParticipant.id));
+        toast.success(`${selectedParticipant.name} foi removido da lista.`);
+        setShowDeleteModal(false);
+        setSelectedParticipant(null);
     };
 
     const formatDate = (date: Date) =>
@@ -225,68 +230,42 @@ const EventRegistration = () => {
                                                 </div>
 
                                                 <div className="flex-grow-1">
-                                                    {editingId === p.id ? (
-                                                        <>
-                                                            <Form.Control
-                                                                className="mb-2"
-                                                                value={editName}
-                                                                onChange={(e) => setEditName(e.target.value)}
-                                                                placeholder="Nome"
-                                                            />
-                                                            <Form.Control
-                                                                className="mb-2"
-                                                                value={editEmail}
-                                                                onChange={(e) => setEditEmail(e.target.value)}
-                                                                placeholder="E-mail"
-                                                            />
-                                                            <div className="d-flex gap-2">
-                                                                <Button size="sm" onClick={handleSaveEdit}>
-                                                                    Salvar
-                                                                </Button>
-                                                                <Button
-                                                                    variant="outline-secondary"
-                                                                    size="sm"
-                                                                    onClick={handleCancelEdit}
-                                                                >
-                                                                    Cancelar
-                                                                </Button>
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <h6 className="mb-1 text-truncate">{p.name}</h6>
-                                                            <div className="small text-muted d-flex align-items-center gap-1">
-                                                                <Mail size={14} />
-                                                                <span className="text-truncate">{p.email}</span>
-                                                            </div>
-                                                            <div className="text-muted small mt-1">
-                                                                Inscrito em {formatDate(p.registeredAt)}
-                                                            </div>
-                                                        </>
-                                                    )}
+                                                    <h6 className='mb-1 text-truncate'>
+                                                        {p.name}
+                                                    </h6>
+                                                    <div className='small text-muted d-flex align-items-center gap-1'>
+                                                        <Mail size={14} />
+                                                        <span className='text-truncate'>
+                                                            {p.email}
+                                                        </span>
+                                                    </div>
+                                                    <div className='text-muted small mt-1'>
+                                                        Inscrito em{' '}
+                                                        {formatDate(p.registeredAt)}
+                                                    </div>
                                                 </div>
 
-                                                {editingId !== p.id && (
-                                                    <div className="d-flex flex-column align-items-end gap-2">
-                                                        <Badge bg="success">#{index + 1}</Badge>
-                                                        <div className="d-flex gap-1">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline-secondary"
-                                                                onClick={() => handleEdit(p)}
-                                                            >
-                                                                <Edit size={14} />
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline-danger"
-                                                                onClick={() => handleDelete(p.id)}
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </Button>
-                                                        </div>
+                                                <div className='d-flex flex-column align-items-end gap-2'>
+                                                    <Badge bg='success'>
+                                                        #{index + 1}
+                                                    </Badge>
+                                                    <div className='d-flex gap-1'>
+                                                        <Button
+                                                            size='sm'
+                                                            variant='outline-secondary'
+                                                            onClick={() => openEditModal(p)}
+                                                        >
+                                                            <Edit size={14} />
+                                                        </Button>
+                                                        <Button
+                                                            size='sm'
+                                                            variant='outline-danger'
+                                                            onClick={() => openDeleteModal(p)}
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </Button>
                                                     </div>
-                                                )}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -305,6 +284,61 @@ const EventRegistration = () => {
                     </div>
                 )}
             </Container>
+
+            {/* Modal de Edição */}
+            <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Editar Participante</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form>
+                        <Form.Group className='mb-3'>
+                            <Form.Label>Nome</Form.Label>
+                            <Form.Control
+                                type='text'
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                            />
+                        </Form.Group>
+                        <Form.Group>
+                            <Form.Label>E-mail</Form.Label>
+                            <Form.Control
+                                type='email'
+                                value={editEmail}
+                                onChange={(e) => setEditEmail(e.target.value)}
+                            />
+                        </Form.Group>
+                    </Form>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+                        Cancelar
+                    </Button>
+                    <Button variant="primary" onClick={handleSaveEdit}>
+                        Salvar Alterações
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* Modal de Confirmação de Remoção */}
+            <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Remover Participante</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    Tem certeza que deseja remover{' '}
+                    <strong>{selectedParticipant?.name}</strong> da lista de participantes?
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+                        Cancelar
+                    </Button>
+                    <Button variant="danger" onClick={handleConfirmDelete}>
+                        Remover
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
         </Container>
     );
 };
