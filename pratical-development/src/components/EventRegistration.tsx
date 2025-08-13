@@ -1,6 +1,7 @@
+import { Calendar, Edit, Mail, Trash2, User, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Container, Row, Col, Form, Button, Card, Badge, Spinner, Alert } from 'react-bootstrap';
-import { Users, Mail, User, Calendar } from 'lucide-react';
+import { Badge, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
+import { toast } from 'react-toastify';
 
 interface Participant {
     id: string;
@@ -23,6 +24,9 @@ const EventRegistration = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editEmail, setEditEmail] = useState('');
 
     useEffect(() => {
         localStorage.setItem('participants', JSON.stringify(participants));
@@ -30,7 +34,99 @@ const EventRegistration = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Usuário inscrito no evento');
+
+        if (!name.trim() || !email.trim()) {
+            toast.error('Por favor, preencha nome e e-mail.');
+            return;
+        }
+
+        if (!email.includes('@')) {
+            toast.warning('Por favor, insira um e-mail válido.');
+            return;
+        }
+
+        const emailExists = participants.some(
+            (p) => p.email.toLowerCase() === email.toLowerCase()
+        );
+
+        if (emailExists) {
+            toast.warning('Este e-mail já está inscrito no evento.');
+            return;
+        }
+
+        setIsSubmitting(true);
+        await new Promise((res) => setTimeout(res, 800));
+
+        const newParticipant: Participant = {
+            id: Date.now().toString(),
+            name: name.trim(),
+            email: email.trim(),
+            registeredAt: new Date(),
+        };
+
+        setParticipants((prev) => [...prev, newParticipant]);
+        setName('');
+        setEmail('');
+        setIsSubmitting(false);
+
+        toast.success(`${newParticipant.name} foi inscrito(a) com sucesso!`);
+    };
+
+    const handleEdit = (participant: Participant) => {
+        setEditingId(participant.id);
+        setEditName(participant.name);
+        setEditEmail(participant.email);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setEditName('');
+        setEditEmail('');
+    };
+
+    const handleSaveEdit = () => {
+        if (!editName.trim() || !editEmail.trim()) {
+            toast.error('Por favor, preencha nome e e-mail.');
+            return;
+        }
+
+        if (!editEmail.includes('@')) {
+            toast.warning('Por favor, insira um e-mail válido.');
+            return;
+        }
+
+        const emailExists = participants.some(
+            (p) =>
+                p.email.toLowerCase() === editEmail.toLowerCase() && p.id !== editingId
+        );
+
+        if (emailExists) {
+            toast.warning('Este e-mail já está inscrito no evento.');
+            return;
+        }
+
+        setParticipants((prev) =>
+            prev.map((p) =>
+                p.id === editingId
+                    ? {
+                        ...p,
+                        name: editName.trim(),
+                        email: editEmail.trim().toLowerCase(),
+                    }
+                    : p
+            )
+        );
+
+        toast.success('Participante atualizado com sucesso.');
+        handleCancelEdit();
+    };
+
+    const handleDelete = (id: string) => {
+        const participant = participants.find((p) => p.id === id);
+        setParticipants((prev) => prev.filter((p) => p.id !== id));
+        if (participant) {
+            toast.success(`${participant.name} foi removido da lista.`);
+        }
     };
 
     const formatDate = (date: Date) =>
@@ -116,25 +212,81 @@ const EventRegistration = () => {
                                     </div>
                                 ) : (
                                     <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                        {participants.map((participant, index) => (
+                                        {participants.map((p, index) => (
                                             <div
-                                                key={participant.id}
-                                                className='d-flex align-items-start gap-3 p-3 border rounded mb-2 bg-light'
+                                                key={p.id}
+                                                className="d-flex align-items-start gap-3 p-3 border rounded mb-2 bg-light"
                                             >
-                                                <div className='rounded-circle bg-primary bg-opacity-25 d-flex align-items-center justify-content-center' style={{ width: 40, height: 40 }}>
-                                                    <User size={20} className='text-primary' />
+                                                <div
+                                                    className="rounded-circle bg-primary bg-opacity-25 d-flex align-items-center justify-content-center"
+                                                    style={{ width: 40, height: 40 }}
+                                                >
+                                                    <User size={20} className="text-primary" />
                                                 </div>
-                                                <div className='flex-grow-1'>
-                                                    <h6 className='mb-1 text-truncate'>{participant.name}</h6>
-                                                    <div className='small text-muted d-flex align-items-center gap-1'>
-                                                        <Mail size={14} />
-                                                        <span className='text-truncate'>{participant.email}</span>
-                                                    </div>
-                                                    <div className='text-muted small mt-1'>
-                                                        Inscrito em {formatDate(participant.registeredAt)}
-                                                    </div>
+
+                                                <div className="flex-grow-1">
+                                                    {editingId === p.id ? (
+                                                        <>
+                                                            <Form.Control
+                                                                className="mb-2"
+                                                                value={editName}
+                                                                onChange={(e) => setEditName(e.target.value)}
+                                                                placeholder="Nome"
+                                                            />
+                                                            <Form.Control
+                                                                className="mb-2"
+                                                                value={editEmail}
+                                                                onChange={(e) => setEditEmail(e.target.value)}
+                                                                placeholder="E-mail"
+                                                            />
+                                                            <div className="d-flex gap-2">
+                                                                <Button size="sm" onClick={handleSaveEdit}>
+                                                                    Salvar
+                                                                </Button>
+                                                                <Button
+                                                                    variant="outline-secondary"
+                                                                    size="sm"
+                                                                    onClick={handleCancelEdit}
+                                                                >
+                                                                    Cancelar
+                                                                </Button>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <h6 className="mb-1 text-truncate">{p.name}</h6>
+                                                            <div className="small text-muted d-flex align-items-center gap-1">
+                                                                <Mail size={14} />
+                                                                <span className="text-truncate">{p.email}</span>
+                                                            </div>
+                                                            <div className="text-muted small mt-1">
+                                                                Inscrito em {formatDate(p.registeredAt)}
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
-                                                <Badge bg='outline-sucess'>#{participants.length - index}</Badge>
+
+                                                {editingId !== p.id && (
+                                                    <div className="d-flex flex-column align-items-end gap-2">
+                                                        <Badge bg="success">#{index + 1}</Badge>
+                                                        <div className="d-flex gap-1">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline-secondary"
+                                                                onClick={() => handleEdit(p)}
+                                                            >
+                                                                <Edit size={14} />
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline-danger"
+                                                                onClick={() => handleDelete(p.id)}
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
