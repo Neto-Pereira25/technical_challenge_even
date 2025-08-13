@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Badge, Button, Card, Col, Container, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 
-import '../styles/eventRegistrationLayout.css';
+import { CreateParticipantSchema } from '../schema/participant.schema';
 
 interface Participant {
     id: string;
@@ -41,13 +41,17 @@ const EventRegistration = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!name.trim() || !email.trim()) {
-            toast.error('Por favor, preencha nome e e-mail.');
-            return;
-        }
+        const validation = CreateParticipantSchema.safeParse({
+            name: name, email: email
+        });
 
-        if (!email.includes('@')) {
-            toast.warning('Por favor, insira um e-mail válido.');
+        if (!validation.success) {
+            const errors = validation.error.issues.map((err) => ({
+                field: err.path.join('.'),
+                message: err.message,
+            }));
+
+            errors.forEach(err => toast.warning(`${err.message}`));
             return;
         }
 
@@ -91,13 +95,18 @@ const EventRegistration = () => {
     };
 
     const handleSaveEdit = () => {
-        if (!editName.trim() || !editEmail.trim()) {
-            toast.error('Por favor, preencha nome e e-mail.');
-            return;
-        }
 
-        if (!editEmail.includes('@')) {
-            toast.warning('Por favor, insira um e-mail válido.');
+        const validation = CreateParticipantSchema.safeParse({
+            name: editName, email: editEmail
+        });
+
+        if (!validation.success) {
+            const errors = validation.error.issues.map((err) => ({
+                field: err.path.join('.'),
+                message: err.message,
+            }));
+
+            errors.forEach(err => toast.warning(`${err.message}`));
             return;
         }
 
@@ -144,7 +153,7 @@ const EventRegistration = () => {
         }).format(new Date(date));
 
     return (
-        <Container fluid className='py-5 bg-light min-vh-100'>
+        <Container fluid className='bg-light'>
             <Container style={{ maxWidth: '960px' }}>
                 <div className="text-center mb-5">
                     <div className='d-inline-flex align-items-center gap-2 bg-primary bg-opacity-10 text-primary px-4 py-2 rounded-pill small fw-medium mb-3'>
