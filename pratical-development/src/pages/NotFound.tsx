@@ -1,6 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import { useEffect } from 'react';
-import { Button, Col, Container, Row } from 'react-bootstrap';
+import { Col, Container, Row } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 
 const NotFound = () => {
@@ -19,9 +19,9 @@ const NotFound = () => {
                     <AlertTriangle size={88} className='text-warning mb-3' />
                     <h1 className='display-4'>404</h1>
                     <p className='lead text-muted'>Oops! Página não encontrada</p>
-                    <Button as={Link} to='/' variant='primary'>
+                    <Link to='/' className='btn btn-primary'>
                         Voltar para a Página Inicial
-                    </Button>
+                    </Link>
                 </Col>
             </Row>
         </Container>
